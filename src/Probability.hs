@@ -1,10 +1,11 @@
+{-# LANGUAGE GADTs #-}
 module Probability
     ( equals
     , Outcome(NumericValue, TruthValue)
     ) where
 
 import qualified Data.Map as Map
-import Control.Monad.Reader (Reader, ask, runReader)
+import Control.Monad.Reader (Reader, ask, runReader, MonadPlus (..))
 import Data.Ratio (Ratio, (%))
 
 import Syntax
@@ -12,6 +13,8 @@ import Syntax
     , Term(Number, Boolean, Variable, Let, Add, Leq, Conditional)
     , Distribution(Uniform)
     )
+import Control.Monad (liftM, ap)
+import Control.Applicative (Alternative (empty, (<|>)))
 
 -- * Export
 equals :: Term Type -> Outcome -> Probability
@@ -31,11 +34,77 @@ type Observed a  = Map.Map a Occurrences
 data Outcome = NumericValue Int | TruthValue Bool
     deriving (Show, Eq, Ord, Read)
 
+instance Semigroup Outcome where
+    (NumericValue x) <> (NumericValue y) = NumericValue (x +  y)
+    (TruthValue   x) <> (TruthValue   y) = TruthValue   (x && y)
+    _ <> _ = error "Cannot combine NumericValue and TruthValue"
+
 
 type Annotation = (Total, Observed Outcome)
 
 type Name          = String
 type Environment   = Name -> Outcome
+
+data OccurrenceMap a where
+    Prim   :: (Ord a, Monoid a) => Observed a ->  OccurrenceMap a
+    Return :: a -> OccurrenceMap a
+    Bind   :: OccurrenceMap a -> (a -> OccurrenceMap b) -> OccurrenceMap b
+    Zero   :: OccurrenceMap a
+    Plus   :: OccurrenceMap a -> OccurrenceMap a -> OccurrenceMap a
+
+instance Functor OccurrenceMap where
+    fmap = liftM
+
+instance Applicative OccurrenceMap where
+    pure = return
+    (<*>) = ap
+
+instance Monad OccurrenceMap where
+    return = Return
+    (>>=)  = Bind
+
+instance Alternative OccurrenceMap where
+    empty = Zero
+    (<|>) = Plus
+
+instance MonadPlus OccurrenceMap where
+  mzero = Zero
+  mplus = Plus
+
+run :: (Ord a, Monoid a) => OccurrenceMap a -> Observed a
+run (Prim     m) = m
+run (Return   a) = Map.singleton a 1
+run (Zero      ) = Map.empty
+run (Plus ma mb) =
+    foldr (uncurry (Map.insertWith (+))) Map.empty $
+      do (v0, occ0) <- Map.assocs $ run ma
+         (v1, occ1) <- Map.assocs $ run mb
+         return (v0 <> v1, occ0 * occ1)
+run (Bind (Prim m) f) =
+    foldr (uncurry (Map.insertWith (+))) Map.empty $
+      do (a, occ0) <- Map.assocs m
+         (b, occ1) <- Map.assocs $ (run . f) a
+         return (b, occ0 * occ1)
+run (Bind (Return a) f)             = run (f a)
+run (Bind Zero _)                   = run Zero
+run (Bind (Plus (Prim m) ma) f)     =
+    let plus = foldr (uncurry (Map.insertWith (+))) Map.empty $
+                do (a, occ0) <- Map.assocs m
+                   (b, occ1) <- Map.assocs $ run ma
+                   return (a <> b, occ0 * occ1)
+        in foldr (uncurry (Map.insertWith (+))) Map.empty $
+                do (a, occ0) <- Map.assocs plus
+                   (b, occ1) <- Map.assocs $ run $ f a
+                   return (b , occ0 * occ1)
+run (Bind (Plus ma (Prim m)) f)     = undefined
+run (Bind (Plus (Return a) ma) f)   = undefined
+run (Bind (Plus ma (Return a)) f)   = undefined
+run (Bind (Plus Zero ma) f)         = undefined
+run (Bind (Plus ma Zero) f)         = undefined
+run (Bind (Plus (Plus ma mb) mc) f) = undefined
+run (Bind (Plus ma mb) f)           = undefined
+run (Bind (Bind ma f) g)            = undefined
+
 
 event :: Annotation -> Outcome -> Maybe Occurrences
 event (_, m) outcome =  Map.lookup outcome m
