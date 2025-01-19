@@ -56,11 +56,11 @@ instance Functor OccurrenceMap where
     fmap = liftM
 
 instance Applicative OccurrenceMap where
-    pure = return
+    pure = Return
     (<*>) = ap
 
 instance Monad OccurrenceMap where
-    return = Return
+    return = pure
     (>>=)  = Bind
 
 instance Alternative OccurrenceMap where
@@ -71,40 +71,38 @@ instance MonadPlus OccurrenceMap where
   mzero = Zero
   mplus = Plus
 
-run :: (Ord a, Monoid a) => OccurrenceMap a -> Observed a
-run (Prim     m) = m
-run (Return   a) = Map.singleton a 1
-run (Zero      ) = Map.empty
-run (Plus ma mb) =
+combine :: (Ord a, Monoid a) => Observed a -> Observed a -> Observed a
+a `combine` b =
     foldr (uncurry (Map.insertWith (+))) Map.empty $
-      do (v0, occ0) <- Map.assocs $ run ma
-         (v1, occ1) <- Map.assocs $ run mb
+      do (v0, occ0) <- Map.assocs a
+         (v1, occ1) <- Map.assocs b
          return (v0 <> v1, occ0 * occ1)
-run (Bind (Prim m) f) =
+
+apply :: ( Ord b, Monoid b) => Observed a -> (a -> OccurrenceMap b) -> Observed b
+m `apply` f =
     foldr (uncurry (Map.insertWith (+))) Map.empty $
       do (a, occ0) <- Map.assocs m
          (b, occ1) <- Map.assocs $ (run . f) a
          return (b, occ0 * occ1)
-run (Bind (Return a) f)             = run (f a)
-run (Bind Zero _)                   = run Zero
-run (Bind (Plus (Prim m) ma) f)     =
-    let plus = foldr (uncurry (Map.insertWith (+))) Map.empty $
-                do (a, occ0) <- Map.assocs m
-                   (b, occ1) <- Map.assocs $ run ma
-                   return (a <> b, occ0 * occ1)
-        in foldr (uncurry (Map.insertWith (+))) Map.empty $
-                do (a, occ0) <- Map.assocs plus
-                   (b, occ1) <- Map.assocs $ run $ f a
-                   return (b , occ0 * occ1)
-run (Bind (Plus ma (Prim m)) f)     = undefined
-run (Bind (Plus (Return a) ma) f)   = undefined
-run (Bind (Plus ma (Return a)) f)   = undefined
-run (Bind (Plus Zero ma) f)         = undefined
-run (Bind (Plus ma Zero) f)         = undefined
-run (Bind (Plus (Plus ma mb) mc) f) = undefined
-run (Bind (Plus ma mb) f)           = undefined
-run (Bind (Bind ma f) g)            = undefined
 
+
+run :: (Ord a, Monoid a) => OccurrenceMap a -> Observed a
+run (Prim     m)            = m
+run (Return   a)            = Map.singleton a 1
+run Zero                    = Map.empty
+run (Plus ma mb)            = run ma `combine` run mb
+run (Bind (Prim   m) f)     =     m  `apply`       f
+run (Bind (Return a) f)     = run (f a)
+run (Bind Zero _)           = run Zero
+run (Bind (Plus (Prim   m)   mb        ) f) = run (Bind (Prim (m      `combine` run mb)) f)
+run (Bind (Plus ma           (Prim m)  ) f) = run (Bind (Prim (run ma `combine`     m )) f)
+run (Bind (Plus (Return a)   mb        ) f) = run (Plus (f a)       (Bind mb f))
+run (Bind (Plus ma           (Return b)) f) = run (Plus (Bind ma f) (f b      ))
+run (Bind (Plus Zero         mb        ) f) = run (Bind mb f)
+run (Bind (Plus ma           Zero      ) f) = run (Bind ma f)
+run (Bind (Plus (Plus ma mb) mc        ) f) = run (Bind (Plus ma (Plus mb mc)) f)
+run (Bind (Plus ma           mb        ) f) = run (Plus (Bind ma f) (Bind mb f) )
+run (Bind (Bind ma f) g)                    = run (Bind ma (\a -> Bind (f a) g))
 
 event :: Annotation -> Outcome -> Maybe Occurrences
 event (_, m) outcome =  Map.lookup outcome m
