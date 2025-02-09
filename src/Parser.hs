@@ -71,6 +71,14 @@ parens = between (symbol "(") (symbol ")")
 operator :: Monoid a => (Term a -> Term a -> a -> Term a) -> Term a -> Term a -> Term a
 operator op m n = op m n mempty
 
+-- Transform == to if-stmt using <=
+equals :: Monoid a => Term a -> Term a -> Term a
+equals t0 t1 =
+    Conditional (Leq t0 t1 mempty) 
+        (Leq t1 t0 mempty) 
+        (Boolean False mempty)
+        mempty
+
 arithmetic :: Parser UnannotatedTerm
 arithmetic =
     atom `chainl1`
@@ -82,7 +90,10 @@ nonassoc p po = p >>= \v1 -> option v1 (po >>= \f -> p >>= \v2 -> return $ f v1 
 relation :: Parser UnannotatedTerm
 relation =
     arithmetic `nonassoc`
-    choice [ symbol "<=" >> return (operator Leq)]
+    choice
+        [ symbol "<=" >> return (operator Leq)
+        , symbol "==" >> return equals
+        ]
 
 distribution :: Parser (Distribution Type)
 distribution = keyword "uniform" >>
