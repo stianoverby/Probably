@@ -1,8 +1,8 @@
 {-#LANGUAGE DeriveFunctor #-}
 
 module Syntax 
-    ( Type(Num, Bool)
-    , Term(Number, Boolean, Variable, Let, Add, Leq, Conditional)
+    ( Type(Num)
+    , Term(Number, Variable, Let, Add, Leq, Conditional)
     , Distribution(Uniform)
     , Annotated(annotation)
     )
@@ -11,7 +11,6 @@ where
 type Name = String
 
 data Type = Num Int Int 
-          | Bool
     deriving (Show, Eq, Ord, Read)
 
 data Distribution a = Uniform a 
@@ -25,7 +24,6 @@ type D    = Distribution Type
 
 -- * Annotated terms
 data Term a = Number      Int                      a     
-            | Boolean     Bool                     a
             | Variable    Name                     a
             | Let         Name       D      (T2 a) a
             | Add         (T0    a ) (T1 a)        a
@@ -40,7 +38,6 @@ class Annotated thing where
 
 instance Annotated Term where 
   annotations (Number       _        a) = return a
-  annotations (Boolean      _        a) = return a
   annotations (Variable     _        a) = return a
   annotations (Let          _  _  t2 a) = a : ([t2               ] >>= annotations)
   annotations (Add          t0 t1    a) = a : ([t0, t1           ] >>= annotations)

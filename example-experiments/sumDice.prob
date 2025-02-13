@@ -1,5 +1,3 @@
 let die1 ~ uniform Int 1 6 in
 let die2 ~ uniform Int 1 6 in
-if die1 <= die2
-    then die2 <= die1
-    else False
+die1 + die2

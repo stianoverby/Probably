@@ -4,11 +4,11 @@ import Text.ParserCombinators.Parsec
 import Control.Monad (void)
 
 import Syntax
-    ( Type(Num, Bool)
-    , Term(Number, Boolean, Variable, Add, Leq, Conditional, Let)
+    ( Type(Num)
+    , Term(Number, Variable, Add, Leq, Conditional, Let)
     , Distribution(Uniform)
     )
-import Probability(Outcome(NumericValue, TruthValue))
+import Probability(Outcome)
 
 -- * exports
 parseString :: String -> Either ParseError UnannotatedTerm
@@ -59,8 +59,8 @@ identifier =
 atom :: Parser UnannotatedTerm
 atom =
     choice [ number          >>= \m -> return (Number   m     ())
-           , keyword "True"  >>        return (Boolean  True  ())
-           , keyword "False" >>        return (Boolean  False ())
+           , keyword "True"  >>        return (Number   1     ())
+           , keyword "False" >>        return (Number   0     ())
            , identifier      >>= \x -> return (Variable x     ())
            , parens expression
            ]
@@ -76,7 +76,7 @@ equals :: Monoid a => Term a -> Term a -> Term a
 equals t0 t1 =
     Conditional (Leq t0 t1 mempty) 
         (Leq t1 t0 mempty) 
-        (Boolean False mempty)
+        (Number 0 mempty)
         mempty
 
 arithmetic :: Parser UnannotatedTerm
@@ -99,7 +99,6 @@ distribution :: Parser (Distribution Type)
 distribution = keyword "uniform" >>
     choice
         [ keyword "Int"  >> Num <$> number <*> number >>= \tau -> return (Uniform tau)
-        , keyword "Bool" >>                                       return (Uniform Bool)
         , parens distribution
         ]
 
@@ -138,7 +137,7 @@ program = expression
 query :: Parser Outcome
 query =
     choice
-        [ number          >>= \m -> return (NumericValue m    )
-        , keyword "True"  >>        return (TruthValue   True )
-        , keyword "False" >>        return (TruthValue   False)
+        [ number          >>= \m -> return m
+        , keyword "True"  >>        return 1
+        , keyword "False" >>        return 0
         ]

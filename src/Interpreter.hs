@@ -6,20 +6,14 @@ import Control.Monad.Trans.Maybe (MaybeT (runMaybeT))
 import Data.Time.Clock.POSIX (getPOSIXTime)
 
 import Syntax
-  ( Type(Num, Bool)
-  , Term(Number, Boolean, Variable, Let, Add, Leq, Conditional)
+  ( Type(Num)
+  , Term(Number, Variable, Let, Add, Leq, Conditional)
   , Distribution(Uniform)
   )
 
 type RandomState = State StdGen
 type Name        = String
-
-data Value = NumericValue Int | TruthValue Bool
-  deriving (Eq)
-
-instance Show Value where
-  show (NumericValue m) = show m
-  show (TruthValue   b) = show b
+type Value       = Int
 
 -- * export
 evaluate :: Term Type -> IO Value
@@ -36,9 +30,13 @@ truthy n
   | n == 0    = False
   | otherwise = True
 
+leq :: Int -> Int -> Int
+leq m n
+  | m <= n    = 1
+  | otherwise = 0
+
 substitute :: Name -> Term Type -> Term Type -> Term Type
 substitute _ _ (Number  n tau) = Number  n tau
-substitute _ _ (Boolean b tau) = Boolean b tau
 substitute x c (Variable y tau)
   | x == y    = c
   | otherwise = Variable y tau
@@ -65,29 +63,17 @@ sample (Uniform (Num l u)) = do
   let (n, nextGen) = randomR (l, u) gen
   put nextGen
   return $ Number n (Num l u)
-sample (Uniform Bool) = do
-  gen <- get
-  let (l, u      ) = (0,1) :: (Int, Int)
-  let (v, nextGen) = randomR (l, u) gen
-  let b            = truthy v
-  put nextGen
-  return $ Boolean b Bool
 
 eval :: Term Type -> MaybeT RandomState Value
-eval (Number   n _) = return $ NumericValue  n
-eval (Boolean  b _) = return $ TruthValue    b
+eval (Number   n _) = return n
 eval (Variable x _) = error  $ "Variable " ++ x ++ " is not bound"
-eval (Add  t0 t1 _) = do
-  NumericValue m <- eval t0
-  NumericValue n <- eval t1
-  return $ NumericValue (m + n)
-eval (Leq  t0 t1 _) = do
-  NumericValue m <- eval t0
-  NumericValue n <- eval t1
-  return $ TruthValue (m <= n)
+eval (Add  t0 t1 _) = (+)  <$> eval t0 <*> eval t1
+eval (Leq  t0 t1 _) = leq  <$> eval t0 <*> eval t1 
 eval (Conditional t0 t1 t2 _) = do
-  TruthValue b <- eval t0
-  if b then eval t1 else eval t2
+  b <- eval t0
+  if truthy b
+    then eval t1
+    else eval t2
 eval (Let x dist t2 _) = do
   value <- lift $ sample dist
   eval $ substitute x value t2

@@ -2,6 +2,4 @@ let coin1 ~ uniform Int 0 1 in
 let coin2 ~ uniform Int 0 1 in 
 let coin3 ~ uniform Int 0 1 in 
 let coin4 ~ uniform Int 0 1 in
-if (coin1 + coin2 + coin3 + coin4) <= 4
-    then 4 <= (coin1 + coin2 + coin3 + coin4)
-    else False
+(coin1 + coin2 + coin3 + coin4) == 2

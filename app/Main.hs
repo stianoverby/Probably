@@ -10,9 +10,6 @@ import System.Environment (getArgs                )
 printParsingError :: String -> IO ()
 printParsingError s = putStrLn $ "[Parse error]: " ++ s
 
-printTypingError :: String -> IO ()
-printTypingError s = putStrLn $ "[Typing error]: " ++ s
-
 usage :: IO ()
 usage = die "Usage:\n\
         \  probably --help             PROGRAM.prob (print this message                              )\n\
@@ -28,9 +25,8 @@ main = do args <- getArgs
             else case args of
             ["--abs-typecheck", file] -> do
               s <- readFile file
-              case typecheck (read s) of
-                  Left e  -> printTypingError $ show e
-                  Right _ -> return mempty
+              _ <- return $ typecheck (read s)
+              return ()
             ["--parse", file] -> do
               s <- readFile file
               case parseString s of
@@ -39,24 +35,18 @@ main = do args <- getArgs
             ["--typecheck", file] -> do
               s <- readFile file
               case parseString s of
-                Left  e -> printParsingError $ show e
-                Right p -> case typecheck p of
-                  Left e  -> printTypingError $ show e
-                  Right _ -> return mempty
+                Left err -> printParsingError $ show err
+                Right p  -> print             $ typecheck p
             ["--equals", query, file] -> do
               s <- readFile file
               case parseString s of
                 Left  e -> printParsingError $ show e
                 Right p -> case parseQuery query of
                   Left  e       -> printParsingError $ show e
-                  Right outcome -> case typecheck p of
-                    Left  e -> printTypingError $ show e
-                    Right t -> print $ show $ t `equals` outcome
+                  Right outcome -> print $ show $ typecheck p `equals` outcome
             [file] -> do
               s <- readFile file
               case parseString s of
                 Left  e -> printParsingError $ show e
-                Right p -> case typecheck p of
-                  Left  e -> printTypingError $ show e
-                  Right t -> evaluate t >>= \val -> print val
+                Right p -> evaluate (typecheck p) >>= \val -> print val
             _ -> usage
