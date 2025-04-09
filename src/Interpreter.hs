@@ -68,7 +68,7 @@ eval :: Term Type -> MaybeT RandomState Value
 eval (Number   n _) = return n
 eval (Variable x _) = error  $ "Variable " ++ x ++ " is not bound"
 eval (Add  t0 t1 _) = (+)  <$> eval t0 <*> eval t1
-eval (Leq  t0 t1 _) = leq  <$> eval t0 <*> eval t1 
+eval (Leq  t0 t1 _) = leq  <$> eval t0 <*> eval t1
 eval (Conditional t0 t1 t2 _) = do
   b <- eval t0
   if truthy b
@@ -77,4 +77,3 @@ eval (Conditional t0 t1 t2 _) = do
 eval (Let x dist t2 _) = do
   value <- lift $ sample dist
   eval $ substitute x value t2
-  

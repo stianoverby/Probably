@@ -5,7 +5,7 @@ module Probability
     ) where
 
 import qualified Data.Map as Map
-import Control.Monad.Reader (Reader, ask, runReader, MonadPlus(mzero, mplus))
+import Control.Monad.Reader (Reader, ask, runReader, )
 import Data.Ratio (Ratio, (%))
 
 import Syntax
@@ -14,7 +14,6 @@ import Syntax
     , Distribution(Uniform)
     )
 import Control.Monad (liftM, ap)
-import Control.Applicative (Alternative (empty, (<|>)))
 
 -- * Export
 equals :: Term Type -> Outcome -> Probability
@@ -39,11 +38,10 @@ type Name          = String
 type Environment   = Name -> Outcome
 
 data Observed a where
-    Lift         :: (Ord a, Num a) => OccurrenceMap a ->  Observed a
+    Return       :: (Ord a, Num a) => OccurrenceMap a ->  Observed a
     Certainly    :: a -> Observed a
     Bind         :: Observed a -> (a -> Observed b) -> Observed b
     Impossible   :: Observed a
-    Plus         :: Observed a -> Observed a -> Observed a
 
 instance Functor Observed where
     fmap = liftM
@@ -55,14 +53,6 @@ instance Applicative Observed where
 instance Monad Observed where
     return = pure
     (>>=)  = Bind
-
-instance Alternative Observed where
-    empty = Impossible
-    (<|>) = Plus
-
-instance MonadPlus Observed where
-  mzero = Impossible
-  mplus = Plus
 
 each :: OccurrenceMap a -> [(a, Occurrences)]
 each = Map.assocs
@@ -78,22 +68,14 @@ m `apply` f =
          return (b, occ0 * occ1)
 
 run :: (Ord a) => Observed a -> OccurrenceMap a
-run (Lift      m)           = m
-run (Certainly a)           = Map.singleton a 1
-run Impossible              = Map.empty
-run (Plus ma mb)            = run ma `union` run mb
-run (Bind (Lift      m) f)  =     m  `apply`       f
-run (Bind (Certainly a) f)  = run (f a)
-run (Bind Impossible    _)  = run Impossible
-run (Bind (Plus (Lift   m)    mb           ) f) = run (Bind (Lift (m      `union` run mb)) f)
-run (Bind (Plus ma            (Lift m)     ) f) = run (Bind (Lift (run ma `union`     m )) f)
-run (Bind (Plus (Certainly a) mb           ) f) = run (Plus (f a)       (Bind mb f))
-run (Bind (Plus ma            (Certainly b)) f) = run (Plus (Bind ma f) (f b      ))
-run (Bind (Plus Impossible    mb           ) f) = run (Bind mb f)
-run (Bind (Plus ma            Impossible   ) f) = run (Bind ma f)
-run (Bind (Plus (Plus ma mb)  mc           ) f) = run (Bind (Plus ma (Plus mb mc)) f)
-run (Bind (Plus ma            mb           ) f) = run (Plus (Bind ma f) (Bind mb f) )
-run (Bind (Bind ma f) g)                        = run (Bind ma (\a -> Bind (f a) g))
+run (Return    m)          = m
+run (Certainly a)          = Map.singleton a 1
+run  Impossible            = Map.empty
+run (Bind (Return    m) f) = m `apply` f
+run (Bind (Certainly a) f) = run (f a)
+run (Bind Impossible    _) = run Impossible
+run (Bind (Bind   ma f) g) = run (Bind ma (\a -> Bind (f a) g))
+
 
 count :: Annotation -> Total
 count    = fst
@@ -102,7 +84,7 @@ observed :: Annotation -> Observed Outcome
 observed = snd
 
 event :: Annotation -> Outcome -> Maybe Occurrences
-event (_, m) outcome = Map.lookup outcome (run m) 
+event (_, m) outcome = Map.lookup outcome (run m)
 
 chanceOf :: Annotation -> Outcome -> Probability
 chanceOf a outcome = case event a outcome of
@@ -116,7 +98,7 @@ domain :: Type -> [Outcome]
 domain (Num m n) = [m .. n]
 
 interpret :: Term Type -> Reader Environment Annotation
-interpret (Number  n _) = 
+interpret (Number  n _) =
     let k = 1
         m = return n
     in return (k, m)
@@ -128,7 +110,7 @@ interpret (Variable x _) = do
 interpret (Add t0 t1 _) = do
     a0 <- interpret t0
     a1 <- interpret t1
-    let 
+    let
         k = count a0 * count a1
         m = (+) <$> observed a0 <*> observed a1
     return (k, m)
@@ -150,7 +132,7 @@ interpret (Let x (Uniform tau) t2 _) = do
     env <- ask
     let annotations   = [runReader (interpret t2) (bind x val env) | val <- domain tau]
         k             = sum  $ map count annotations
-        m             = Lift $ foldr (union . run . observed) mempty annotations
+        m             = Return $ foldr (union . run . observed) mempty annotations
     return (k, m)
 
 infer :: Term Type -> Annotation

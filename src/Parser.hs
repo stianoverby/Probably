@@ -74,8 +74,8 @@ operator op m n = op m n mempty
 -- Transform == to if-stmt using <=
 equals :: Monoid a => Term a -> Term a -> Term a
 equals t0 t1 =
-    Conditional (Leq t0 t1 mempty) 
-        (Leq t1 t0 mempty) 
+    Conditional (Leq t0 t1 mempty)
+        (Leq t1 t0 mempty)
         (Number 0 mempty)
         mempty
 
