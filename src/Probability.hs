@@ -5,7 +5,7 @@ module Probability
     ) where
 
 import qualified Data.Map as Map
-import Control.Monad.Reader (Reader, ask, runReader, )
+import Control.Monad.Reader (Reader, ask, runReader, forM, MonadReader (local), )
 import Data.Ratio (Ratio, (%))
 
 import Syntax
@@ -107,9 +107,6 @@ bind name outcome env x = if name == x then outcome else env x
 domain :: Type -> [Outcome]
 domain (Num m n) = [m .. n]
 
-size :: Type -> Int
-size (Num l u) = u + 1 - l
-
 uniform :: Ord a => [a] -> OccurrenceMap a
 uniform values = Map.fromList [(v, 1) | v <- values]
 
@@ -145,12 +142,15 @@ interpret (Conditional t0 t1 t2 _) = do
         1 -> a2
         _ -> error "Internal error: A branch has to be picked with probability 1"
 interpret (Let x (Uniform tau) t2 _) = do
-    env <- ask
-    let
-        k      = size             tau
-        m      = Bind
-            (Lift $ uniform $ domain tau)
-            (\outcome -> observed $ runReader (interpret t2) (bind x outcome env))
+    let outcomes = domain tau
+    results <- forM outcomes $ \outcome -> do
+        (k', m') <- local (bind x outcome) (interpret t2)
+        return (outcome, k', m')
+    let k = sum [k' | (_, k', _) <- results]
+        m = Bind (Lift $ uniform $ domain tau) $ \val ->
+            case lookup val [(outcome, m') | (outcome, _, m') <- results] of
+                Just m'  -> m'
+                Nothing  -> error "unexpected value in Let binding"
     return (k, m)
 
 infer :: Term Type -> Annotation
