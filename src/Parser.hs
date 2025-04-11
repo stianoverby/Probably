@@ -79,6 +79,20 @@ equals t0 t1 =
         (Number 0 mempty)
         mempty
 
+desugarAnd :: Monoid a => Term a -> Term a -> Term a
+t0 `desugarAnd` t1 =
+    Conditional (t0)
+        (t1)
+        (Number 0 mempty)
+        mempty
+
+desugarOr :: Monoid a => Term a -> Term a -> Term a
+t0 `desugarOr` t1 =
+    Conditional (t0)
+        (Number 1 mempty)
+        t1
+        mempty
+
 arithmetic :: Parser UnannotatedTerm
 arithmetic =
     atom `chainl1`
@@ -122,12 +136,20 @@ letClause = do
     t2 <- expression
     return (Let x dist t2 ())
 
+andTest :: Parser UnannotatedTerm
+andTest =
+    relation `chainl1`
+    choice [symbol "&&" >> return desugarAnd]
+
+orTest :: Parser UnannotatedTerm
+orTest = andTest `chainl1` choice [ symbol "||" >> return desugarOr]
+
 expression :: Parser UnannotatedTerm
 expression =
     choice
         [ ifClause
         , letClause
-        , relation
+        , orTest
         , parens expression
         ]
 

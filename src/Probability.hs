@@ -38,10 +38,11 @@ type Name          = String
 type Environment   = Name -> Outcome
 
 data Observed a where
-    Return       :: (Ord a, Num a) => OccurrenceMap a ->  Observed a
-    Certainly    :: a -> Observed a
-    Bind         :: Observed a -> (a -> Observed b) -> Observed b
-    Impossible   :: Observed a
+    Certainly  :: a -> Observed a
+    Impossible :: Observed a
+    Bind       :: Observed a -> (a -> Observed b) -> Observed b
+    Lift       :: (Ord a, Num a) => OccurrenceMap a -> Observed a
+    Kleisli    :: (a -> Observed b) -> (b -> Observed c) -> (a -> Observed c)
 
 instance Functor Observed where
     fmap = liftM
@@ -53,14 +54,12 @@ instance Applicative Observed where
 instance Monad Observed where
     return = pure
     (>>=)  = Bind
+    --(>>=) a mf = Kleisli id mf a
 
 each :: OccurrenceMap a -> [(a, Occurrences)]
 each = Map.assocs
 
-union :: (Ord a) => OccurrenceMap a -> OccurrenceMap a -> OccurrenceMap a
-m0 `union`m1 = Map.unionWith (+) m0 m1
-
-apply :: ( Ord b) => OccurrenceMap a -> (a -> Observed b) -> OccurrenceMap b
+apply :: (Ord b) => OccurrenceMap a -> (a -> Observed b) -> OccurrenceMap b
 m `apply` f =
     foldr (uncurry (Map.insertWith (+))) Map.empty $
       do (a, occ0) <- each m
@@ -68,13 +67,24 @@ m `apply` f =
          return (b, occ0 * occ1)
 
 run :: (Ord a) => Observed a -> OccurrenceMap a
-run (Return    m)          = m
-run (Certainly a)          = Map.singleton a 1
-run  Impossible            = Map.empty
-run (Bind (Return    m) f) = m `apply` f
-run (Bind (Certainly a) f) = run (f a)
-run (Bind Impossible    _) = run Impossible
-run (Bind (Bind   ma f) g) = run (Bind ma (\a -> Bind (f a) g))
+run (Lift    m) = m
+run (Certainly a) = Map.singleton a 1
+run (Impossible ) = Map.empty
+run (Bind ma f) = case ma of
+    Lift    a     ->  a `apply` f
+    Certainly a     ->  run $ f a
+    Impossible      ->  run $ Impossible
+    Bind mb g       ->  run $ Bind mb (\a -> Bind (g a) f)
+    Kleisli mf mg b ->  run $ Bind (Bind (mf b) mg) f
+run (Kleisli f g a) =
+    -- Semantics of Kleisli (unused)
+    -- (>=>) : (a -> m a) -> (b -> m b) -> (a -> m b)
+    case f a of
+        Lift     b       -> b `apply` g
+        Certainly  b       -> run $ g b
+        Impossible         -> run Impossible
+        (Kleisli h i b)    -> run $ Kleisli (const (h b)) (Kleisli i g) b
+        (Bind a' f'      ) -> run $ Kleisli (Kleisli (const a') f') g a
 
 
 count :: Annotation -> Total
@@ -96,6 +106,12 @@ bind name outcome env x = if name == x then outcome else env x
 
 domain :: Type -> [Outcome]
 domain (Num m n) = [m .. n]
+
+size :: Type -> Int
+size (Num l u) = u + 1 - l
+
+uniform :: Ord a => [a] -> OccurrenceMap a
+uniform values = Map.fromList [(v, 1) | v <- values]
 
 interpret :: Term Type -> Reader Environment Annotation
 interpret (Number  n _) =
@@ -130,9 +146,11 @@ interpret (Conditional t0 t1 t2 _) = do
         _ -> error "Internal error: A branch has to be picked with probability 1"
 interpret (Let x (Uniform tau) t2 _) = do
     env <- ask
-    let annotations   = [runReader (interpret t2) (bind x val env) | val <- domain tau]
-        k             = sum  $ map count annotations
-        m             = Return $ foldr (union . run . observed) mempty annotations
+    let
+        k      = size             tau
+        m      = Bind
+            (Lift $ uniform $ domain tau)
+            (\outcome -> observed $ runReader (interpret t2) (bind x outcome env))
     return (k, m)
 
 infer :: Term Type -> Annotation
