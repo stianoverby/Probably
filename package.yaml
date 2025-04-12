@@ -28,6 +28,7 @@ dependencies:
 - transformers
 - containers
 - parsec
+- QuickCheck >= 2.14
 ghc-options:
 - -Wall
 - -Wcompat
