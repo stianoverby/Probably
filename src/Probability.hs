@@ -1,6 +1,8 @@
 {-# LANGUAGE GADTs #-}
 module Probability
     ( equals
+    , run
+    , infer
     , Outcome
     ) where
 
