@@ -1,3 +1,0 @@
-let die1 ~ uniform Int 1 6 in
-let die2 ~ uniform Int 1 6 in
-die1 + die2

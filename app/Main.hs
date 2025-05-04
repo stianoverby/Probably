@@ -2,8 +2,9 @@ module Main (main) where
 
 import Parser             (parseString, parseQuery)
 import Typechecker        (typecheck              )
-import Probability        (equals                 )
+import Probability        (equals, less           )
 import Interpreter        (evaluate               )
+import Print              (pp, ppAst              )
 import System.Exit        (die                    )
 import System.Environment (getArgs                )
 
@@ -31,12 +32,19 @@ main = do args <- getArgs
               s <- readFile file
               case parseString s of
                 Left  e -> printParsingError $ show e
-                Right p -> print p
+                Right p -> putStrLn          $ ppAst p
             ["--typecheck", file] -> do
               s <- readFile file
               case parseString s of
                 Left err -> printParsingError $ show err
-                Right p  -> print             $ typecheck p
+                Right p  -> putStrLn          $ pp $ typecheck p
+            ["--less", query, file] -> do
+              s <- readFile file
+              case parseString s of
+                Left  e -> printParsingError $ show e
+                Right p -> case parseQuery query of
+                  Left  e       -> printParsingError $ show e
+                  Right outcome -> print $ show $ typecheck p `less` outcome
             ["--equals", query, file] -> do
               s <- readFile file
               case parseString s of

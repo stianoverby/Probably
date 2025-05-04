@@ -1,3 +1,0 @@
-let dice1 ~ uniform Int 1 6 in
-let dice2 ~ uniform Int 1 6 in
-dice1 == dice2

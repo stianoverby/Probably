@@ -2,7 +2,7 @@
 
 module Syntax
     ( Type(Num)
-    , Term(Number, Variable, Let, Add, Leq, Conditional)
+    , Term(Number, Variable, Not, Let, Add, Leq, Conditional)
     , Distribution(Uniform)
     , Annotated(annotation)
     )
@@ -25,6 +25,7 @@ type D    = Distribution Type
 -- * Annotated terms
 data Term a = Number      Int                      a
             | Variable    Name                     a
+            | Not         (T0    a )               a
             | Let         Name       D      (T2 a) a
             | Add         (T0    a ) (T1 a)        a
             | Leq         (T0    a ) (T1 a)        a
@@ -39,6 +40,7 @@ class Annotated thing where
 instance Annotated Term where
   annotations (Number       _        a) = return a
   annotations (Variable     _        a) = return a
+  annotations (Not          t0       a) = a : ([t0               ] >>= annotations)
   annotations (Let          _  _  t2 a) = a : ([t2               ] >>= annotations)
   annotations (Add          t0 t1    a) = a : ([t0, t1           ] >>= annotations)
   annotations (Leq          t0 t1    a) = a : ([t0, t1           ] >>= annotations)

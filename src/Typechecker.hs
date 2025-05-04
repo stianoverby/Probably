@@ -4,7 +4,7 @@ import Control.Monad.Reader ( MonadReader(ask, local), Reader, runReader )
 
 import Syntax
     ( Type(Num)
-    , Term(Number, Variable, Let, Add, Leq, Conditional)
+    , Term(Number, Variable, Not, Let, Add, Leq, Conditional)
     , Annotated(annotation)
     )
 
@@ -26,7 +26,11 @@ bind name tau env y = if name == y then tau else env y
 annotate :: Term Unannotated -> Inference (Term Type)
 annotate (Number  m  _) =                 return $ Number   m (Num m m)
 annotate (Variable x _) = ask >>= \env -> return $ Variable x (env x)
-annotate (Add t0 t1 _) = do
+annotate (Not     t  _) = do
+    t' <- annotate t
+    let tau = Num 0 1
+    return $ Not t' tau
+annotate (Add t0 t1 _)  = do
     t0' <- annotate t0
     t1' <- annotate t1
     let (Num l0 u0) = annotation t0'

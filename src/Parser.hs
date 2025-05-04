@@ -5,7 +5,7 @@ import Control.Monad (void)
 
 import Syntax
     ( Type(Num)
-    , Term(Number, Variable, Add, Leq, Conditional, Let)
+    , Term(Number, Variable, Not, Add, Leq, Conditional, Let)
     , Distribution(Uniform)
     )
 import Probability(Outcome)
@@ -21,7 +21,7 @@ parseQuery = parse (whitespace *> query <* eof) ""
 type UnannotatedTerm = Term ()
 
 reserved :: [String]
-reserved = ["True", "False", "let", "in", "if", "then", "else", "uniform"]
+reserved = ["True", "False", "let", "in", "if", "then", "else", "uniform", "not"]
 
 -- * Helpers
 whitespace :: Parser ()
@@ -71,7 +71,7 @@ parens = between (symbol "(") (symbol ")")
 operator :: Monoid a => (Term a -> Term a -> a -> Term a) -> Term a -> Term a -> Term a
 operator op m n = op m n mempty
 
--- Transform == to if-stmt using <=
+-- (a == b) = (if a then b else False)
 equals :: Monoid a => Term a -> Term a -> Term a
 equals t0 t1 =
     Conditional (Leq t0 t1 mempty)
@@ -79,16 +79,20 @@ equals t0 t1 =
         (Number 0 mempty)
         mempty
 
+-- (a < b) = (a <= b && a /= b)
+less :: Monoid a => Term a -> Term a -> Term a
+less t0 t1 = Leq t0 t1 mempty `desugarAnd` Not (t0 `equals` t1) mempty
+
 desugarAnd :: Monoid a => Term a -> Term a -> Term a
 t0 `desugarAnd` t1 =
-    Conditional (t0)
-        (t1)
+    Conditional t0
+        t1
         (Number 0 mempty)
         mempty
 
 desugarOr :: Monoid a => Term a -> Term a -> Term a
 t0 `desugarOr` t1 =
-    Conditional (t0)
+    Conditional t0
         (Number 1 mempty)
         t1
         mempty
@@ -105,8 +109,9 @@ relation :: Parser UnannotatedTerm
 relation =
     arithmetic `nonassoc`
     choice
-        [ symbol "<=" >> return (operator Leq)
-        , symbol "==" >> return equals
+        [ try $ symbol "<=" >> return (operator Leq)
+        ,       symbol "<"  >> return less
+        ,       symbol "==" >> return equals
         ]
 
 distribution :: Parser (Distribution Type)
@@ -144,12 +149,19 @@ andTest =
 orTest :: Parser UnannotatedTerm
 orTest = andTest `chainl1` choice [ symbol "||" >> return desugarOr]
 
+notTest :: Parser UnannotatedTerm
+notTest =
+    choice
+        [ keyword "not" >> (orTest >>= \t -> return (Not t ()))
+        , orTest
+        ]
+
 expression :: Parser UnannotatedTerm
 expression =
     choice
         [ ifClause
         , letClause
-        , orTest
+        , notTest
         , parens expression
         ]
 

@@ -1,6 +1,7 @@
 {-# LANGUAGE GADTs #-}
 module Probability
     ( equals
+    , less
     , run
     , infer
     , Outcome
@@ -12,32 +13,39 @@ import Data.Ratio (Ratio, (%))
 
 import Syntax
     ( Type(Num)
-    , Term(Number, Variable, Let, Add, Leq, Conditional)
+    , Term(Number, Variable, Not, Let, Add, Leq, Conditional)
     , Distribution(Uniform)
+    , Annotated(annotation)
     )
 import Control.Monad (liftM, ap)
+import Data.Maybe (mapMaybe)
 
 -- * Export
 equals :: Term Type -> Outcome -> Probability
 term `equals` outcome =
-    let annotation = infer term
-        (k, _)     = annotation
-    in case event annotation outcome of
+    let km     = infer term
+        (k, _) = km
+    in case event km outcome of
         Just occ -> occ % k
         _        -> 0
+
+less :: Term Type -> Outcome -> Probability
+term `less` outcome =
+    let km         = infer term
+        (k, _)     = km
+        Num l _    = annotation term
+        numerator  = sum $ mapMaybe (event km) [l .. outcome - 1]
+    in numerator % k
 
 -- * Implementation
 type Probability      = Ratio Int
 type Total            = Int
 type Occurrences      = Int
 type OccurrenceMap a  = Map.Map a Occurrences
-
-type Outcome = Int
-
-type Annotation = (Total, Observed Outcome)
-
-type Name          = String
-type Environment   = Name -> Outcome
+type Outcome          = Int
+type Annotation       = (Total, Observed Outcome)
+type Name             = String
+type Environment      = Name -> Outcome
 
 data Observed a where
     Certainly  :: a -> Observed a
@@ -68,12 +76,15 @@ m `apply` f =
          (b, occ1) <- each $ (run . f) a
          return (b, occ0 * occ1)
 
+joinBranches :: Observed Outcome -> Observed Outcome -> Observed Outcome -> Observed Outcome
+joinBranches cond t1 t2 = Bind cond $ \v0 -> if v0 /= 0 then t1 else t2
+
 run :: (Ord a) => Observed a -> OccurrenceMap a
 run (Lift    m) = m
 run (Certainly a) = Map.singleton a 1
-run (Impossible ) = Map.empty
+run Impossible    = Map.empty
 run (Bind ma f) = case ma of
-    Lift    a     ->  a `apply` f
+    Lift    a       ->  a `apply` f
     Certainly a     ->  run $ f a
     Impossible      ->  run $ Impossible
     Bind mb g       ->  run $ Bind mb (\a -> Bind (g a) f)
@@ -82,7 +93,7 @@ run (Kleisli f g a) =
     -- Semantics of Kleisli (unused)
     -- (>=>) : (a -> m a) -> (b -> m b) -> (a -> m b)
     case f a of
-        Lift     b       -> b `apply` g
+        Lift     b         -> b `apply` g
         Certainly  b       -> run $ g b
         Impossible         -> run Impossible
         (Kleisli h i b)    -> run $ Kleisli (const (h b)) (Kleisli i g) b
@@ -122,6 +133,11 @@ interpret (Variable x _) = do
     let k = 1
         m = return (env x)
     return (k, m)
+interpret (Not t _) = do
+    a <- interpret t
+    let k = count a
+        m = not' <$> observed a
+    return (k, m)
 interpret (Add t0 t1 _) = do
     a0 <- interpret t0
     a1 <- interpret t1
@@ -133,16 +149,18 @@ interpret (Leq t0 t1 _) = do
     a0 <- interpret t0
     a1 <- interpret t1
     let k = count a0 * count a1
-        m = (\a b  -> if a <= b then 1 else 0) <$> observed a0 <*> observed a1
+        m = (\a b -> fromEnum $ a <= b) <$> observed a0 <*> observed a1
     return (k, m)
 interpret (Conditional t0 t1 t2 _) = do
     a0 <- interpret t0
     a1 <- interpret t1
     a2 <- interpret t2
-    return $ case a0 `chanceOf` 0 of
-        0 -> a1
-        1 -> a2
-        _ -> error "Internal error: A branch has to be picked with probability 1"
+    case a0 `chanceOf` false of
+        0  -> return a1
+        1  -> return a2
+        _  -> let m = joinBranches (observed a0) (observed a1) (observed a2)
+                  k = sum $ Map.elems $ run m -- Need to know overlap between branches
+              in return (k, m)
 interpret (Let x (Uniform tau) t2 _) = do
     let outcomes = domain tau
     results <- forM outcomes $ \outcome -> do
@@ -158,3 +176,12 @@ interpret (Let x (Uniform tau) t2 _) = do
 infer :: Term Type -> Annotation
 infer t = runReader (interpret t) gamma
     where gamma x = error $ x ++ " is not bound to any outcome"
+
+false :: Int
+false = 0
+
+truthy :: Int -> Int
+truthy = fromEnum . (/= false)
+
+not' :: Int -> Int
+not' = (1-) . truthy

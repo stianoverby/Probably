@@ -7,7 +7,7 @@ import Data.Time.Clock.POSIX (getPOSIXTime)
 
 import Syntax
   ( Type(Num)
-  , Term(Number, Variable, Let, Add, Leq, Conditional)
+  , Term(Number, Variable, Not, Let, Add, Leq, Conditional)
   , Distribution(Uniform)
   )
 
@@ -31,15 +31,16 @@ truthy n
   | otherwise = True
 
 leq :: Int -> Int -> Int
-leq m n
-  | m <= n    = 1
-  | otherwise = 0
+leq m n = fromEnum $ m <= n
 
 substitute :: Name -> Term Type -> Term Type -> Term Type
 substitute _ _ (Number  n tau) = Number  n tau
 substitute x c (Variable y tau)
   | x == y    = c
   | otherwise = Variable y tau
+substitute x c (Not t tau) =
+  let t' = substitute x c t
+  in Not t' tau
 substitute x c (Add t1 t2 tau) =
   let t1' = substitute x c t1
       t2' = substitute x c t2
@@ -53,9 +54,11 @@ substitute x c (Conditional t0 t1 t2 tau) =
       t1' = substitute x c t1
       t2' = substitute x c t2
   in Conditional t0' t1' t2' tau
-substitute x c (Let y t1 t2 tau) =
-  let t2' = substitute x c t2
-  in Let y t1 t2' tau
+substitute x c (Let y t1 t2 tau)
+  | x == y    = Let y t1 t2 tau
+  | otherwise =
+      let t2' = substitute x c t2
+      in Let y t1 t2' tau
 
 sample :: Distribution Type -> RandomState (Term Type)
 sample (Uniform (Num l u)) = do
@@ -67,6 +70,9 @@ sample (Uniform (Num l u)) = do
 eval :: Term Type -> MaybeT RandomState Value
 eval (Number   n _) = return n
 eval (Variable x _) = error  $ "Variable " ++ x ++ " is not bound"
+eval (Not      t _) = do
+  b <- eval t
+  return $ fromEnum $ truthy b
 eval (Add  t0 t1 _) = (+)  <$> eval t0 <*> eval t1
 eval (Leq  t0 t1 _) = leq  <$> eval t0 <*> eval t1
 eval (Conditional t0 t1 t2 _) = do

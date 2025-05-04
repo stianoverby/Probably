@@ -1,0 +1,6 @@
+let d1 ~ uniform Int 1 6 in
+let d2 ~ uniform Int 1 6 in
+let d3 ~ uniform Int 1 6 in
+let d4 ~ uniform Int 1 6 in
+let d5 ~ uniform Int 1 6 in
+(d1 + d2 + d3 + d4 + d5)

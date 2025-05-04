@@ -1,0 +1,4 @@
+let d1 ~ uniform Int 1 6 in
+let d2 ~ uniform Int 1 6 in
+let d3 ~ uniform Int 1 6 in
+(d1 + d2 + d3)
