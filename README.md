@@ -6,7 +6,7 @@ The official interpreter for the Probably language.
 
 Probably is a functional probabilistic programming language implemented in Haskell.
 It supports both sampling-based evaluation and exact inference of probabilistic
-programs, called *experiments.
+programs, called *experiments*.
 It is a small language expressive enough to model arithmetic expressions with
 random variables and conditionals.
 
