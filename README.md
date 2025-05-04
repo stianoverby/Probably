@@ -114,4 +114,4 @@ Were to find experiments noted in Listings and Figures
 
 ## License
 
-This project is released under the MIT License.
+This project is released under the GPL-3.0 License.
