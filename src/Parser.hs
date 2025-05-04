@@ -1,14 +1,33 @@
 module Parser(parseString, parseQuery) where
 
-import Text.ParserCombinators.Parsec
 import Control.Monad (void)
-
-import Syntax
-    ( Type(Num)
-    , Term(Number, Variable, Not, Add, Leq, Conditional, Let)
-    , Distribution(Uniform)
+import Text.ParserCombinators.Parsec
+    ( Parser
+    , ParseError
+    , char
+    , digit
+    , letter
+    , space
+    , string
+    , between
+    , chainl1
+    , choice
+    , eof
+    , many1
+    , notFollowedBy
+    , option
+    , (<|>)
+    , many
+    , parse
+    , try
     )
+
 import Probability(Outcome)
+import Syntax
+    ( Type        (Num                                              )
+    , Term        (Number, Variable, Not, Add, Leq, Conditional, Let)
+    , Distribution(Uniform                                          )
+    )
 
 -- * exports
 parseString :: String -> Either ParseError UnannotatedTerm

@@ -1,25 +1,25 @@
 {-# LANGUAGE GADTs #-}
 
-module Probability
-  ( equals,
-    less,
-    present,
-    run,
-    infer,
-    Outcome,
-  )
+module Probability (equals, less, present, run, infer, Outcome)
 where
 
-import Control.Monad (ap, liftM)
-import Control.Monad.Reader (MonadReader (local), Reader, ask, forM, runReader)
 import qualified Data.Map as Map
-import Data.Maybe (mapMaybe)
-import Data.Ratio (Ratio, (%))
+import Data.Maybe           (mapMaybe  )
+import Data.Ratio           (Ratio, (%))
+import Control.Monad        (ap, liftM )
+import Control.Monad.Reader
+  ( MonadReader (local)
+  , Reader
+  , ask
+  , forM
+  , runReader
+  )
+
 import Syntax
-  ( Annotated (annotation),
-    Distribution (Uniform),
-    Term (Add, Conditional, Leq, Let, Not, Number, Variable),
-    Type (Num),
+  ( Annotated    (annotation                                       )
+  , Distribution (Uniform                                          )
+  , Type         (Num                                              )
+  , Term         (Add, Conditional, Leq, Let, Not, Number, Variable)
   )
 
 -- * Export
@@ -45,28 +45,21 @@ present = Map.assocs . run . observed . infer
 
 -- * Implementation
 
-type Probability = Ratio Int
-
-type Total = Int
-
-type Occurrences = Int
-
+type Probability     = Ratio Int
+type Total           = Int
+type Occurrences     = Int
 type OccurrenceMap a = Map.Map a Occurrences
-
-type Outcome = Int
-
-type Annotation = (Total, Observed Outcome)
-
-type Name = String
-
-type Environment = Name -> Outcome
+type Outcome         = Int
+type Annotation      = (Total, Observed Outcome)
+type Name            = String
+type Environment     = Name -> Outcome
 
 data Observed a where
-  Certainly :: a -> Observed a
+  Certainly  :: a -> Observed a
   Impossible :: Observed a
-  Bind :: Observed a -> (a -> Observed b) -> Observed b
-  Lift :: (Ord a, Num a) => OccurrenceMap a -> Observed a
-  Kleisli :: (a -> Observed b) -> (b -> Observed c) -> a -> Observed c
+  Bind       :: Observed a -> (a -> Observed b) -> Observed b
+  Lift       :: (Ord a, Num a) => OccurrenceMap a -> Observed a
+  Kleisli    :: (a -> Observed b) -> (b -> Observed c) -> a -> Observed c
 
 instance Functor Observed where
   fmap = liftM
@@ -137,6 +130,15 @@ domain (Num m n) = [m .. n]
 uniform :: (Ord a) => [a] -> OccurrenceMap a
 uniform values = Map.fromList [(v, 1) | v <- values]
 
+false :: Int
+false = 0
+
+truthy :: Int -> Int
+truthy = fromEnum . (/= false)
+
+not' :: Int -> Int
+not' = (1 -) . truthy
+
 interpret :: Term Type -> Reader Environment Annotation
 interpret (Number n _) =
   let k = 1
@@ -187,12 +189,3 @@ infer :: Term Type -> Annotation
 infer t = runReader (interpret t) gamma
   where
     gamma x = error $ x ++ " is not bound to any outcome"
-
-false :: Int
-false = 0
-
-truthy :: Int -> Int
-truthy = fromEnum . (/= false)
-
-not' :: Int -> Int
-not' = (1 -) . truthy

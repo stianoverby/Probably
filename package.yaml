@@ -27,7 +27,9 @@ dependencies:
 - time
 - transformers
 - containers
+- directory
 - parsec
+- HUnit
 - QuickCheck >= 2.14
 ghc-options:
 - -Wall

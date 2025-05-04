@@ -1,14 +1,14 @@
 module Interpreter (evaluate) where
 
-import System.Random (StdGen, Random (randomR), mkStdGen)
+import System.Random            (StdGen, Random (randomR), mkStdGen           )
 import Control.Monad.State.Lazy (State, MonadState (get), put, lift, evalState)
-import Control.Monad.Trans.Maybe (MaybeT (runMaybeT))
-import Data.Time.Clock.POSIX (getPOSIXTime)
+import Control.Monad.Trans.Maybe(MaybeT (runMaybeT)                           )
+import Data.Time.Clock.POSIX    (getPOSIXTime                                 )
 
 import Syntax
-  ( Type(Num)
-  , Term(Number, Variable, Not, Let, Add, Leq, Conditional)
-  , Distribution(Uniform)
+  ( Type        (Num                                              )
+  , Term        (Number, Variable, Not, Let, Add, Leq, Conditional)
+  , Distribution(Uniform                                          )
   )
 
 type RandomState = State StdGen

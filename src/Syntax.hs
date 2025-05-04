@@ -1,14 +1,14 @@
 {-#LANGUAGE DeriveFunctor #-}
 
 module Syntax
-    ( Type(Num)
-    , Term(Number, Variable, Not, Let, Add, Leq, Conditional)
-    , Distribution(Uniform)
-    , Annotated(annotation)
-    )
+  ( Type        (Num                                              )
+  , Distribution(Uniform                                          )
+  , Annotated   (annotation                                       )
+  , Term        (Number, Variable, Not, Let, Add, Leq, Conditional)
+  )
 where
 
-type Name = String
+type Name    = String
 
 data Type = Num Int Int
     deriving (Show, Eq, Ord, Read)

@@ -39,11 +39,11 @@ The project includes a command-line interface via `Main.hs`. Compile it using `g
 
 ## Example Program
 
-    let x = uniform 1..6 in
-    let y = uniform 1..6 in
-    if x <= y then x + y else y
+    let x ~ uniform Int 1 6 in
+    let y ~ uniform Int 1 6 in
+    x + y
 
-This models rolling two dice and conditionally adding or selecting values.
+This models rolling two dice and sums them.
 
 ## Building and Testing
 
@@ -65,7 +65,7 @@ To clean up after stack:
     # Clean up everything
     stack purge
 
-We do property based testing with `QuickCheck` to test our programs
+We do property based testing with `QuickCheck` and some simple regression tests of our test programs
 
 To run tests:
 
@@ -87,16 +87,16 @@ The implementation can be found in these files
 
     .
     ├── app
-    │   └── Main.hs
+    │   └── Main.hs          -- The command line interface
     ├── src
-    │   ├── Interpreter.hs   -- Random sampling evaluation
-    │   ├── Parser.hs        -- Language parser using Parsec
+    │   ├── Interpreter.hs   -- Evaluator for conductng experiments
+    │   ├── Parser.hs        -- Language parser implemented using Parsec
     │   ├── Print.hs         -- Pretty-printers for AST and typed programs
-    │   ├── Probability.hs   -- Probability distribution inference implementation
+    │   ├── Probability.hs   -- Evaluator for exact inference of experiments
     │   ├── Syntax.hs        -- The core language definition
     │   └── Typechecker.hs   -- Type inference and checking
     └── test
-        └── Spec.hs          -- Property-based testing with QuickCheck
+        └── Spec.hs          -- Property-based tests and unit tests
 
 
 Were to find experiments noted in Listings and Figures
@@ -109,6 +109,7 @@ Were to find experiments noted in Listings and Figures
         ├── slotMachine.prob
         ├── throw3dice.prob
         └── throw5dice.prob
+        └── ....
 
 
 ## License

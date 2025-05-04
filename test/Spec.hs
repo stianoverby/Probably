@@ -1,40 +1,100 @@
--- * We know that a term will wrap a Type
+-- * We know that a term will only wrap a Type
 {-# LANGUAGE FlexibleInstances #-}
 
--- * We do want to keep the testing stuff in here
+-- * We want to keep the testing stuff in here
 {-# OPTIONS_GHC -Wno-orphans #-}
 
-import qualified Data.Map  as Map
+import qualified Data.Map as Map
 import Test.QuickCheck
-    ( Gen
-    , Arbitrary(arbitrary)
-    , choose
-    , sized
-    , oneof
-    , quickCheck
-    , verboseCheck
-    , elements
-    )
-import System.Environment (getArgs)
+  ( Gen
+  , Arbitrary(arbitrary)
+  , choose
+  , sized
+  , oneof
+  , quickCheck
+  , verboseCheck
+  , elements
+  )
+import Control.Monad      (when              )
+import System.Environment (getArgs           )
+import Data.Ratio         (Ratio, (%)        )
+
+import Parser             (parseString             )
+import Typechecker        (typecheck               )
+import Probability        (infer, run, equals, less)
 import Syntax
-    ( Type(Num)
-    , Distribution(Uniform)
-    , Term(Number, Variable, Not, Let, Add, Leq, Conditional)
-    , Annotated(annotation)
-    )
-import Probability
-    ( infer
-    , run
-    )
+  ( Type        (Num                                              )
+  , Distribution(Uniform                                          )
+  , Annotated   (annotation                                       )
+  , Term        (Number, Variable, Not, Let, Add, Leq, Conditional)
+  )
+
+type Assertion = IO ()
+type TestCase  = (Int, Ratio Int, Ratio Int)
+type Path      = String
+
 main :: IO ()
 main = do
     args <- getArgs
-    let check = if "--verbose" `elem` args then verboseCheck else quickCheck
-    print "[INFO]: Running tests..."
+    let check = if "--verbose" `elem` args
+                then verboseCheck
+                else quickCheck
+    putStrLn ""
+    putStrLn "[INFO]: Running property based tests..."
     check prop_probability_sums_to_1
     check prop_outcome_in_type
     check prop_no_negative_occurrences
-    print "[INFO]: Success"
+
+
+    putStrLn "[INFO]: Running regression tests..."
+    mapM_ (uncurry runRegressionTest) $ Map.toList testInput
+    putStrLn "[INFO]: Regression tests successful..."
+
+-- * Unit Testing
+
+testInput :: Map.Map Path TestCase
+testInput = Map.fromList
+  [ ("example-experiments/simple.prob"     , (5,  1 % 10  , 4 % 10))
+  , ("example-experiments/slotMachine.prob", (1,  1 % 8000, 7999 % 8000))
+  , ("example-experiments/throw3dice.prob" , (14, 5 % 72  , 181  %  216))
+  , ("example-experiments/throw5dice.prob" , (14, 5 % 72  , 197  % 1296))
+  ]
+
+test :: String -> IO () -> IO ()
+test label action = do
+  putStrLn $ "[TEST]: " ++ label
+  action
+
+assertFailure :: String -> Assertion
+assertFailure msg = ioError (userError ("Assertion failed: " ++ msg))
+
+testEquals :: String -> Int -> Ratio Int -> Assertion
+testEquals program outcome expected = do
+  case parseString program of
+    Left err -> fail $ "Parse error: " ++ show err
+    Right term ->
+      let actual = typecheck term `equals` outcome
+      in  when (actual /= expected) $
+           assertFailure $ "Expected: " ++ show expected ++ ", got: " ++ show actual
+
+testLess :: String -> Int -> Ratio Int -> Assertion
+testLess program outcome expected = do
+  case parseString program of
+    Left err -> fail $ "Parse error: " ++ show err
+    Right term ->
+      let actual = typecheck term `less` outcome
+      in  when (actual /= expected) $
+           assertFailure $ "Expected: " ++ show expected ++ ", got: " ++ show actual
+
+runRegressionTest :: Path -> TestCase -> Assertion
+runRegressionTest path (input, exEq, exLess) = do
+  program <- readFile path
+  let msgEq   = path ++ " P(" ++ show input ++ ")" ++  " == " ++ show exEq
+  let msgLess = path ++ " P(" ++ show input ++ ")" ++  " == " ++ show exLess
+  test msgEq   $ testEquals program input exEq
+  test msgLess $ testLess program input exLess
+
+-- * Property Based Testing
 
 -- * Properties
 
@@ -73,7 +133,7 @@ genName = do
 generateTerm :: Int -> Gen (Term Type)
 generateTerm 0    = generateNum 0
 generateTerm seed = oneof
-  [ generateNum   seed
+  [ generateNum  (seed `div` 2)
   , generateAdd  (seed `div` 2)
   , generateNot  (seed `div` 2)
   , generateLeq  (seed `div` 2)

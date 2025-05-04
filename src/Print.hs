@@ -1,13 +1,10 @@
-module Print
-    ( pp
-    , ppAst
-    )
+module Print (pp , ppAst)
 where
 
 import Syntax
-  ( Term(..)
-  , Distribution(..)
-  , Type(..)
+  ( Term        (Number, Variable, Not, Add, Leq, Conditional, Let)
+  , Distribution(Uniform                                          )
+  , Type        (Num                                              )
   )
 
 -- * Exports
