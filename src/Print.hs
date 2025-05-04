@@ -5,6 +5,10 @@ module Print
 where
 
 import Syntax
+  ( Term(..)
+  , Distribution(..)
+  , Type(..)
+  )
 
 -- * Exports
 pp :: Show a => Term a -> String

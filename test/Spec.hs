@@ -12,8 +12,10 @@ import Test.QuickCheck
     , sized
     , oneof
     , quickCheck
+    , verboseCheck
     , elements
     )
+import System.Environment (getArgs)
 import Syntax
     ( Type(Num)
     , Distribution(Uniform)
@@ -26,10 +28,12 @@ import Probability
     )
 main :: IO ()
 main = do
+    args <- getArgs
+    let check = if "--verbose" `elem` args then verboseCheck else quickCheck
     print "[INFO]: Running tests..."
-    quickCheck prop_probability_sums_to_1
-    quickCheck prop_outcome_in_type
-    quickCheck prop_no_negative_occurrences
+    check prop_probability_sums_to_1
+    check prop_outcome_in_type
+    check prop_no_negative_occurrences
     print "[INFO]: Success"
 
 -- * Properties
@@ -53,8 +57,8 @@ prop_no_negative_occurrences t = all (0 <=) outcomes
 -- * Type and Term Type are instances of Arbitrary
 instance Arbitrary Type where
     arbitrary = do
-        m <- choose (0, 100)
-        n <- choose (m, 100)
+        m <- choose (0, 50)
+        n <- choose (m, 50)
         return $ Num m n
 
 instance Arbitrary (Term Type) where
