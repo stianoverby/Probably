@@ -20,6 +20,7 @@ import Text.ParserCombinators.Parsec
     , many
     , parse
     , try
+    , noneOf
     )
 
 import Probability(Outcome)
@@ -43,8 +44,12 @@ reserved :: [String]
 reserved = ["True", "False", "let", "in", "if", "then", "else", "uniform", "not"]
 
 -- * Helpers
+
+comment :: Parser ()
+comment = void $ char '#' >> many (noneOf "\n")
+
 whitespace :: Parser ()
-whitespace = void $ many $ void space
+whitespace = void $ many $ void space <|> comment
 
 lexeme :: Parser a -> Parser a
 lexeme = (<* whitespace)

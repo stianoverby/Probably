@@ -15,10 +15,10 @@ usage :: IO ()
 usage = die "Usage:\n\
         \  probably --help             PROGRAM.prob (print this message                          )\n\
         \  probably --parse            PROGRAM.prob (parse only                                  )\n\
-        \  probably --typecheck        PROGRAM.ast  (parse && typecheck                          )\n\
+        \  probably --typecheck        PROGRAM.prob (parse && typecheck                          )\n\
         \  probably --equals <outcome> PROGRAM.prob (probability of particular outcome           )\n\
         \  probably --less   <outcome> PROGRAM.prob (probability of less than particular outcome )\n\
-        \  probably --show             PROGRAM.ast  (infer and print out distribution            )\n\
+        \  probably --show             PROGRAM.prob (infer and print out distribution            )\n\
         \  probably                    PROGRAM.prob (run experiment                              )"
 
 main :: IO ()
