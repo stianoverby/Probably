@@ -1,14 +1,19 @@
 # Probably
 The official interpreter for the Probably language.
 
-> [!WARNING]
-> This software is unfinished, and still under development. Keep your expectations low.
-
 Probably is a functional probabilistic programming language implemented in Haskell.
 It supports both sampling-based evaluation and exact inference of probabilistic
 programs, called *experiments*.
 It is a small language expressive enough to model arithmetic expressions with
 random variables and conditionals.
+
+## Prerequisites
+
+To build and run Probably, you will need the following:
+
+- [GHC](https://www.haskell.org/ghc/) (The Glasgow Haskell Compiler)
+- [Stack](https://docs.haskellstack.org/en/stable/#how-to-install-stack) (The Haskell Tool Stack)
+- A terminal or command-line environment
 
 ## Overview
 
@@ -34,7 +39,7 @@ The project includes a command-line interface via `Main.hs`. Compile it using `g
     probably --typecheck program.prob   # Parse and typecheck
     probably --show      program.prob   # Infer and output the probability distribution
     probably --equals 5  program.prob   # Compute P(result == 5)
-    probably --less   7  program.prob   # Compute P(result < 7)
+    probably --less   7  program.prob   # Compute P(result < 7 )
     probably             program.prob   # Evaluate using sampling
 
 ## Example Program
@@ -43,27 +48,56 @@ The project includes a command-line interface via `Main.hs`. Compile it using `g
     let y ~ uniform Int 1 6 in
     x + y
 
-This models rolling two dice and sums them.
+This experiment models rolling two six-sided dice and
+summing their faces.
+Each `let` binds a variable to an outcome sampled from
+a uniform distribution over the integers from 1 to 6.
+The last expression `x + y` sums the two dice rolls.
 
-## Building and Testing
+## Building, Running and Testing Experiments
 
-You can use `stack` to build, run experiments and tests
+You can use [stack](https://docs.haskellstack.org/en/stable/) to build, run experiments and tests
 
 To build:
 
     stack build
 
-To run:
-
-    stack run -- [<flag>] <program-name>
-
-To clean up after stack:
+To clean up:
 
     # Clean up most things
     stack clean
 
     # Clean up everything
     stack purge
+
+
+To run:
+
+    stack run -- [<flag>] <program-name>
+
+Examples:
+
+    # Print help message
+    stack run -- --help
+
+    # Parse a program and show its AST
+    stack run -- --parse example-experiments/simple.prob
+
+    # Parse and typecheck a program
+    stack run -- --typecheck example-experiments/simple.prob
+
+    # Compute probability of rolling exactly 7 with three dice
+    stack run -- --equals 7 example-experiments/throw3dice.prob
+
+    # Compute probability of getting less than 10 with five dice
+    stack run -- --less 10 example-experiments/throw5dice.prob
+
+    # Infer and show the full distribution of outcomes
+    stack run -- --show example-experiments/slotMachine.prob
+
+    # Run a program using sampling
+    stack run -- example-experiments/simple.prob
+
 
 We do property based testing with `QuickCheck` and some simple regression tests of our test programs
 
