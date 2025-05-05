@@ -99,7 +99,7 @@ The implementation can be found in these files
         └── Spec.hs          -- Property-based tests and unit tests
 
 
-Were to find experiments noted in Listings and Figures
+Experiments noted in Listings and Figures can be found in this directory
 
     .
     ├── example-experiments
