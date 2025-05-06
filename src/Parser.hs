@@ -121,9 +121,16 @@ t0 `desugarOr` t1 =
         t1
         mempty
 
+notTest :: Parser UnannotatedTerm
+notTest =
+    choice
+        [ keyword "not" >> (orTest >>= \t -> return (Not t ()))
+        , atom
+        ]
+
 arithmetic :: Parser UnannotatedTerm
 arithmetic =
-    atom `chainl1`
+    notTest `chainl1`
     choice [ symbol "+" >> return (operator Add)]
 
 nonassoc :: Parser a -> Parser (a -> a -> a) -> Parser a
@@ -173,19 +180,13 @@ andTest =
 orTest :: Parser UnannotatedTerm
 orTest = andTest `chainl1` choice [ symbol "||" >> return desugarOr]
 
-notTest :: Parser UnannotatedTerm
-notTest =
-    choice
-        [ keyword "not" >> (orTest >>= \t -> return (Not t ()))
-        , orTest
-        ]
 
 expression :: Parser UnannotatedTerm
 expression =
     choice
         [ ifClause
         , letClause
-        , notTest
+        , orTest
         , parens expression
         ]
 
