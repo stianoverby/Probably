@@ -26,22 +26,22 @@ import Syntax
 
 equals :: Term Type -> Outcome -> Probability
 term `equals` outcome =
-  let km = infer term
-      (k, _) = km
+  let km     = infer term
    in case event km outcome of
-        Just occ -> occ % k
+        Just occ -> occ % count km
         _ -> 0
 
 less :: Term Type -> Outcome -> Probability
 term `less` outcome =
-  let km = infer term
-      (k, _) = km
-      Num l _ = annotation term
+  let km        = infer term
+      Num l _   = annotation term
       numerator = sum $ mapMaybe (event km) [l .. outcome - 1]
-   in numerator % k
+   in numerator % count km
 
-present :: Term Type -> [(Outcome, Occurrences)]
-present = Map.assocs . run . observed . infer
+present :: Term Type -> [(Outcome, Probability)]
+present term =
+  let km = infer term
+  in map (\(v, o) -> (v, o % count km)) $ Map.assocs . run $ observed km
 
 -- * Implementation
 
