@@ -1,4 +1,4 @@
-# Run inference at your own risk
+-- Run inference at your own risk
 let p1 ~ uniform Int 1 4 in
 let p2 ~ uniform Int 1 4 in
 let p3 ~ uniform Int 1 4 in
@@ -14,4 +14,6 @@ let c3 ~ uniform Int 1 6 in
 let c4 ~ uniform Int 1 6 in
 let c5 ~ uniform Int 1 6 in
 let c6 ~ uniform Int 1 6 in
-(c1 + c2 + c3 + c4 + c5 + c6) < (p1 + p2 + p3 + p4 + p5 + p6 + p7 + p9)
+(c1 + c2 + c3 + c4 + c5 + c6)
+<
+(p1 + p2 + p3 + p4 + p5 + p6 + p7 + p9)

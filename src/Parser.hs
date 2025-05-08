@@ -46,7 +46,7 @@ reserved = ["True", "False", "let", "in", "if", "then", "else", "uniform", "not"
 -- * Helpers
 
 comment :: Parser ()
-comment = void $ char '#' >> many (noneOf "\n")
+comment = void $ symbol "--" >> many (noneOf "\n")
 
 whitespace :: Parser ()
 whitespace = void $ many $ void space <|> comment
@@ -81,13 +81,13 @@ identifier =
                 else return name
 
 atom :: Parser UnannotatedTerm
-atom =
-    choice [ number          >>= \m -> return (Number   m     ())
-           , keyword "True"  >>        return (Number   1     ())
-           , keyword "False" >>        return (Number   0     ())
-           , identifier      >>= \x -> return (Variable x     ())
-           , parens expression
-           ]
+atom = choice
+    [ number          >>= \m -> return (Number   m     ())
+    , keyword "True"  >>        return (Number   1     ())
+    , keyword "False" >>        return (Number   0     ())
+    , identifier      >>= \x -> return (Variable x     ())
+    , parens expression
+    ]
 
 parens :: Parser a -> Parser a
 parens = between (symbol "(") (symbol ")")
@@ -96,26 +96,26 @@ operator :: Monoid a => (Term a -> Term a -> a -> Term a) -> Term a -> Term a ->
 operator op m n = op m n mempty
 
 -- (a == b) = (if a then b else False)
-equals :: Monoid a => Term a -> Term a -> Term a
-equals t0 t1 =
+sugarEquals :: Monoid a => Term a -> Term a -> Term a
+sugarEquals t0 t1 =
     Conditional (Leq t0 t1 mempty)
         (Leq t1 t0 mempty)
         (Number 0 mempty)
         mempty
 
 -- (a < b) = (a <= b && a /= b)
-less :: Monoid a => Term a -> Term a -> Term a
-less t0 t1 = Leq t0 t1 mempty `desugarAnd` Not (t0 `equals` t1) mempty
+sugarLess :: Monoid a => Term a -> Term a -> Term a
+sugarLess t0 t1 = Leq t0 t1 mempty `sugarAnd` Not (Leq t1 t0 mempty) mempty
 
-desugarAnd :: Monoid a => Term a -> Term a -> Term a
-t0 `desugarAnd` t1 =
+sugarAnd :: Monoid a => Term a -> Term a -> Term a
+t0 `sugarAnd` t1 =
     Conditional t0
         t1
         (Number 0 mempty)
         mempty
 
-desugarOr :: Monoid a => Term a -> Term a -> Term a
-t0 `desugarOr` t1 =
+sugarOr :: Monoid a => Term a -> Term a -> Term a
+t0 `sugarOr` t1 =
     Conditional t0
         (Number 1 mempty)
         t1
@@ -124,14 +124,12 @@ t0 `desugarOr` t1 =
 notTest :: Parser UnannotatedTerm
 notTest =
     choice
-        [ keyword "not" >> (orTest >>= \t -> return (Not t ()))
-        , atom
-        ]
+    [ keyword "not" >> (orTest >>= \t -> return (Not t ()))
+    , atom
+    ]
 
 arithmetic :: Parser UnannotatedTerm
-arithmetic =
-    notTest `chainl1`
-    choice [ symbol "+" >> return (operator Add)]
+arithmetic = notTest `chainl1` (symbol "+" >> return (operator Add))
 
 nonassoc :: Parser a -> Parser (a -> a -> a) -> Parser a
 nonassoc p po = p >>= \v1 -> option v1 (po >>= \f -> p >>= \v2 -> return $ f v1 v2)
@@ -140,17 +138,17 @@ relation :: Parser UnannotatedTerm
 relation =
     arithmetic `nonassoc`
     choice
-        [ try $ symbol "<=" >> return (operator Leq)
-        ,       symbol "<"  >> return less
-        ,       symbol "==" >> return equals
-        ]
+    [ try $ symbol "<=" >> return (operator Leq)
+    ,       symbol "<"  >> return sugarLess
+    ,       symbol "==" >> return sugarEquals
+    ]
 
 distribution :: Parser (Distribution Type)
 distribution = keyword "uniform" >>
     choice
-        [ keyword "Int"  >> Num <$> number <*> number >>= \tau -> return (Uniform tau)
-        , parens distribution
-        ]
+    [ keyword "Int"  >> Num <$> number <*> number >>= \tau -> return (Uniform tau)
+    , parens distribution
+    ]
 
 ifClause :: Parser UnannotatedTerm
 ifClause = do
@@ -173,30 +171,26 @@ letClause = do
     return (Let x dist t2 ())
 
 andTest :: Parser UnannotatedTerm
-andTest =
-    relation `chainl1`
-    choice [symbol "&&" >> return desugarAnd]
+andTest = relation `chainl1` (symbol "&&" >> return sugarAnd)
 
 orTest :: Parser UnannotatedTerm
-orTest = andTest `chainl1` choice [ symbol "||" >> return desugarOr]
+orTest = andTest `chainl1` (symbol "||" >> return sugarOr)
 
 
 expression :: Parser UnannotatedTerm
-expression =
-    choice
-        [ ifClause
-        , letClause
-        , orTest
-        , parens expression
-        ]
+expression = choice
+    [ ifClause
+    , letClause
+    , orTest
+    , parens expression
+    ]
 
 program :: Parser UnannotatedTerm
 program = expression
 
 query :: Parser Outcome
-query =
-    choice
-        [ number          >>= \m -> return m
-        , keyword "True"  >>        return 1
-        , keyword "False" >>        return 0
-        ]
+query = choice
+    [ number          >>= \m -> return m
+    , keyword "True"  >>        return 1
+    , keyword "False" >>        return 0
+    ]
