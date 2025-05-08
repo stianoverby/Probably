@@ -1,4 +1,4 @@
 let symbol1 ~ uniform Int 1 20 in
 let symbol2 ~ uniform Int 1 20 in
 let symbol3 ~ uniform Int 1 20 in
-symbol1 == 1 && symbol2 == 1 && symbol3 == 1
+  symbol1 == 1 && symbol2 == 1 && symbol3 == 1
