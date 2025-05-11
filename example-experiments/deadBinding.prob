@@ -1,0 +1,6 @@
+-- Run inference at your own risk
+let x ~ uniform Int 1 100
+in if x <= 100
+   then x
+   else let y ~ uniform Int 1 5000000
+        in y

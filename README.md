@@ -81,10 +81,10 @@ Examples:
     stack run -- --help
 
     # Parse a program and show its AST
-    stack run -- --parse example-experiments/simple.prob
+    stack run -- --parse example-experiments/simple-01.prob
 
     # Parse and typecheck a program
-    stack run -- --typecheck example-experiments/simple.prob
+    stack run -- --typecheck example-experiments/simple-01.prob
 
     # Compute probability of rolling exactly 7 with three dice
     stack run -- --equals 7 example-experiments/throw3dice.prob
@@ -96,7 +96,7 @@ Examples:
     stack run -- --show example-experiments/slotMachine.prob
 
     # Run a program using sampling
-    stack run -- example-experiments/simple.prob
+    stack run -- example-experiments/simple-01.prob
 
 
 We do property based testing with `QuickCheck` and some simple regression tests of our test programs
@@ -137,9 +137,10 @@ Experiments noted in Listings and Figures can be found in this directory
 
     .
     ├── example-experiments
-        ├── bigRange.prob
+        ├── deadBinding.prob
         ├── eulerProblem205.prob
-        ├── simple.prob
+        ├── simple-01.prob
+        ├── simple-02.prob
         ├── slotMachine.prob
         ├── throw3dice.prob
         └── throw5dice.prob

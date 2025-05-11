@@ -1,4 +1,0 @@
--- Run inference at your own risk
-let x ~ uniform Int 1 100     in
-let y ~ uniform Int 1 5000000 in
-  x

@@ -1,0 +1,2 @@
+let x ~ uniform Int 1 100 in
+x

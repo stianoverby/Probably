@@ -54,7 +54,8 @@ main = do
 
 testInput :: Map.Map Path TestCase
 testInput = Map.fromList
-  [ ("example-experiments/simple.prob"     , (5,  1 % 10  , 4 % 10))
+  [ ("example-experiments/simple-01.prob"  , (5,  1 % 10  , 4    % 10  ))
+  , ("example-experiments/simple-02.prob"  , (5,  1 % 100 , 4    % 100 ))
   , ("example-experiments/slotMachine.prob", (1,  1 % 8000, 7999 % 8000))
   , ("example-experiments/throw3dice.prob" , (14, 5 % 72  , 181  %  216))
   , ("example-experiments/throw5dice.prob" , (14, 5 % 72  , 197  % 1296))

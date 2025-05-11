@@ -1,1 +1,0 @@
-let x ~ uniform Int 1 10 in x
