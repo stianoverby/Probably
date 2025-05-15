@@ -109,6 +109,8 @@ To enable verbose test output:
 
     stack test --test-arguments="--verbose"
 
+Note: Since `QuickCheck` generates random inputs, you might occasionally be unlucky and get a test case that takes a long time to evaluate.
+
 ## Properties Checked
 
 - All inferred distributions sum to a total probability of 1

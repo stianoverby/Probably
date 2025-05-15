@@ -7,7 +7,7 @@
 import qualified Data.Map as Map
 import Test.QuickCheck
   ( Gen
-  , Arbitrary(arbitrary)
+  , Arbitrary(arbitrary, shrink)
   , choose
   , sized
   , oneof
@@ -98,7 +98,6 @@ runRegressionTest path (input, exEq, exLess) = do
 -- * Property Based Testing
 
 -- * Properties
-
 prop_probability_sums_to_1 :: Term Type -> Bool
 prop_probability_sums_to_1 t = k == occurrences
   where (k, m)       = infer t
@@ -118,12 +117,17 @@ prop_no_negative_occurrences t = all (0 <=) outcomes
 -- * Type and Term Type are instances of Arbitrary
 instance Arbitrary Type where
     arbitrary = do
-        m <- choose (0, 50)
-        n <- choose (m, 50)
+        m <- choose (0, 25)
+        n <- choose (m, 25)
         return $ Num m n
 
 instance Arbitrary (Term Type) where
   arbitrary = sized generateTerm
+  shrink (Not    t _)              = [t     ]
+  shrink (Add t0 t1 _)             = [t0, t1]
+  shrink (Leq t0 t1 _)             = [t0, t1]
+  shrink (Conditional _ t1 t2 _)   = [t1, t2]
+  shrink _                         = [      ]
 
 -- * Generating functions
 genName :: Gen String
@@ -134,12 +138,12 @@ genName = do
 generateTerm :: Int -> Gen (Term Type)
 generateTerm 0    = generateNum 0
 generateTerm seed = oneof
-  [ generateNum  (seed `div` 2)
-  , generateAdd  (seed `div` 2)
-  , generateNot  (seed `div` 2)
-  , generateLeq  (seed `div` 2)
-  , generateCond (seed `div` 3)
-  , generateLet  (seed `div` 8)
+  [ generateNum  (seed `div` 2 )
+  , generateAdd  (seed `div` 2 )
+  , generateNot  (seed `div` 2 )
+  , generateLeq  (seed `div` 2 )
+  , generateCond (seed `div` 3 )
+  , generateLet  (seed `div` 8 )
   ]
 generateNum :: Int -> Gen (Term Type)
 generateNum seed = do
